@@ -517,6 +517,16 @@ Paths are taken relative to BASE-DIRECTORY."
            for extracted = (coq--extract-load-path-1 opt base-directory)
            when extracted collect extracted))
 
+; Given a local path, return (file-name-directory path). Given a Tramp path like
+; /ssh:user@host:/path/components, return the directory on the remote server,
+; e.g., "/path"
+(defun file-name-directory-no-tramp (p)
+  (let ((real-path
+         (condition-case nil
+             (elt (tramp-dissect-file-name p) 3)
+           (error p))))
+    (file-name-directory real-path)))
+
 ;; optional args allow to implement the precedence of dir/file local vars
 (defun coq-load-project-file-with-avoid (&optional avoidargs avoidpath)
   "Set `coq-prog-args' and `coq-load-path' from _CoqProject.
@@ -528,7 +538,7 @@ variable."
       (let* ((contents (with-current-buffer proj-file-buf (buffer-string)))
              (options (coq--read-options-from-project-file contents))
              (proj-file-name (buffer-file-name proj-file-buf))
-             (proj-file-dir (file-name-directory proj-file-name)))
+             (proj-file-dir (file-name-directory-no-tramp proj-file-name)))
         (unless avoidargs (setq coq-prog-args (coq--extract-prog-args options)))
         (unless avoidpath (setq coq-load-path (coq--extract-load-path options proj-file-dir)))
         (let ((msg
